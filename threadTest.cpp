@@ -68,14 +68,16 @@ void sendToMain(unsigned char data)
 // スレッドがメインから4ビット受信
 unsigned char rev4bitFromMain(void)
 {
-	while(digitalRead(THREAD_CHK) != 1){
+	while(digitalRead(THREAD_CHK) != 1)
+	{
 	}
 	unsigned char receive4BitData = digitalRead(IDATA0) +
 		digitalRead(IDATA1) * 2 +
 		digitalRead(IDATA2) * 4 +
 		digitalRead(IDATA3) * 8;
 	digitalWrite(THREAD_FLG, 1);
-	while(digitalRead(THREAD_CHK) == 1){
+	while(digitalRead(THREAD_CHK) == 1)
+	{
 	}
 	digitalWrite(THREAD_FLG, 0);
 	return receive4BitData;
@@ -124,7 +126,7 @@ void loadTest()
 	int size = revFromMain() + revFromMain() * 256;
 	for(int i = 0; i < size; ++ i)
 	{
-		sendToMain((unsigned int)(i % 256));
+		sendToMain((unsigned char)(i % 256));
 	}
 }
 
