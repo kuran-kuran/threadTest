@@ -2,6 +2,7 @@
 スレッドテストプログラム。
 このプログラムは動作しません。
 バグっています。
+Roy. @GHF03373 さんに教えてもらってGPIOアクセスに排他処理を追加しました。
 
 ![image](https://github.com/kuran-kuran/threadTest/assets/57883554/1178c517-eabf-4570-a1b3-58967574a63f)
 
