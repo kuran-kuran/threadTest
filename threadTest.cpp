@@ -161,6 +161,7 @@ void loop(void)
 // loopを呼ぶスレッド
 unsigned __stdcall loop_thread(void* param)
 {
+	setup();
 	while(!terminate)
 	{
 		loop();
