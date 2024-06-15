@@ -40,7 +40,9 @@ void digitalWrite(int pin, int data)
 // GPIO読み込み
 int digitalRead(int pin)
 {
+	EnterCriticalSection(&cs[pin]);
 	int data = gpio[pin];
+	LeaveCriticalSection(&cs[pin]);
 	return data;
 }
 
