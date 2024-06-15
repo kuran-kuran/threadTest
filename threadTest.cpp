@@ -27,6 +27,8 @@ bool terminate;
 bool threadError;
 bool setupFlag;
 CRITICAL_SECTION cs[GPIO_CNT];
+HANDLE signalMainToThread;
+HANDLE signalThreadToMain;
 
 // ********** GPIO
 // GPIO書き込み
@@ -59,30 +61,38 @@ void sendToMain(unsigned char data)
 	digitalWrite(ODATA6, (data >> 6) & 1);
 	digitalWrite(ODATA7, (data >> 7) & 1);
 	digitalWrite(THREAD_FLG, 1);
-	while(digitalRead(THREAD_CHK) != 1)
-	{
-	}
+	SetEvent(signalThreadToMain);
+	WaitForSingleObject(signalMainToThread, INFINITE);
+//	while(digitalRead(THREAD_CHK) != 1)
+//	{
+//	}
 	digitalWrite(THREAD_FLG, 0);
-	while(digitalRead(THREAD_CHK) == 1)
-	{
-	}
+	SetEvent(signalThreadToMain);
+	WaitForSingleObject(signalMainToThread, INFINITE);
+//	while(digitalRead(THREAD_CHK) == 1)
+//	{
+//	}
 }
 
 // スレッドがメインから4ビット受信
 unsigned char rev4bitFromMain(void)
 {
-	while(digitalRead(THREAD_CHK) != 1)
-	{
-	}
+	WaitForSingleObject(signalMainToThread, INFINITE);
+//	while(digitalRead(THREAD_CHK) != 1)
+//	{
+//	}
 	unsigned char receive4BitData = digitalRead(IDATA0) +
 		digitalRead(IDATA1) * 2 +
 		digitalRead(IDATA2) * 4 +
 		digitalRead(IDATA3) * 8;
 	digitalWrite(THREAD_FLG, 1);
-	while(digitalRead(THREAD_CHK) == 1)
-	{
-	}
+	SetEvent(signalThreadToMain);
+	WaitForSingleObject(signalMainToThread, INFINITE);
+//	while(digitalRead(THREAD_CHK) == 1)
+//	{
+//	}
 	digitalWrite(THREAD_FLG, 0);
+	SetEvent(signalThreadToMain);
 	return receive4BitData;
 }
 
@@ -165,7 +175,6 @@ void loop(void)
 // loopを呼ぶスレッド
 unsigned __stdcall loop_thread(void* param)
 {
-	setup();
 	while(!terminate)
 	{
 		loop();
@@ -183,13 +192,17 @@ void send4bitToThread(unsigned char data)
 	digitalWrite(IDATA2, (data >> 2) & 1);
 	digitalWrite(IDATA3, (data >> 3) & 1);
 	digitalWrite(MAIN_FLG, 1);
-	while(digitalRead(MAIN_CHK) == 0) // F1CHK
-	{
-	}
+	SetEvent(signalMainToThread);
+	WaitForSingleObject(signalThreadToMain, INFINITE);
+//	while(digitalRead(MAIN_CHK) == 0) // F1CHK
+//	{
+//	}
 	digitalWrite(MAIN_FLG, 0);
-	while(digitalRead(MAIN_CHK) == 1) // F2CHK
-	{
-	}
+	SetEvent(signalMainToThread);
+	WaitForSingleObject(signalThreadToMain, INFINITE);
+//	while(digitalRead(MAIN_CHK) == 1) // F2CHK
+//	{
+//	}
 }
 
 // メインからスレッドに1バイト送信
@@ -202,9 +215,10 @@ void sendToThread(unsigned char data)
 // メインがスレッドから1バイト受信
 unsigned char revFromThread(void)
 {
-	while(digitalRead(MAIN_CHK) == 0) // F1CHK
-	{
-	}
+	WaitForSingleObject(signalThreadToMain, INFINITE);
+//	while(digitalRead(MAIN_CHK) == 0) // F1CHK
+//	{
+//	}
 	unsigned char receive4BitData = digitalRead(ODATA0) +
 		digitalRead(ODATA1) * 2 +
 		digitalRead(ODATA2) * 4 +
@@ -214,10 +228,13 @@ unsigned char revFromThread(void)
 		digitalRead(ODATA6) * 64 +
 		digitalRead(ODATA7) * 128;
 	digitalWrite(MAIN_FLG, 1);
-	while(digitalRead(MAIN_CHK) == 1) // F2CHK
-	{
-	}
+	SetEvent(signalMainToThread);
+	WaitForSingleObject(signalThreadToMain, INFINITE);
+//	while(digitalRead(MAIN_CHK) == 1) // F2CHK
+//	{
+//	}
 	digitalWrite(MAIN_FLG, 0);
+	SetEvent(signalMainToThread);
 	return receive4BitData;
 }
 
@@ -228,10 +245,15 @@ int main()
 	terminate = false;
 	threadError = false;
 	setupFlag = false;
+	setup();
 	for(int i = 0; i < GPIO_CNT; ++ i)
 	{
 		InitializeCriticalSection(&cs[i]);
 	}
+	signalMainToThread = CreateEventA(NULL, FALSE, FALSE, NULL); // main -> thread
+	ResetEvent(signalMainToThread);
+	signalThreadToMain = CreateEventA(NULL, FALSE, FALSE, NULL); // thread -> main
+	ResetEvent(signalThreadToMain);
 	HANDLE thread = (HANDLE)_beginthreadex(NULL, 0, loop_thread, NULL, 0, NULL);
 	if(thread == NULL)
 	{
@@ -300,6 +322,7 @@ int main()
 		toggle = 1 - toggle;
 	}
 	terminate = true;
+	SetEvent(signalMainToThread);
 	WaitForSingleObject(thread, INFINITE);
 	for(int i = 0; i < GPIO_CNT; ++ i)
 	{
