@@ -26,15 +26,15 @@ unsigned char gpio[GPIO_CNT];
 bool terminate;
 bool threadError;
 bool setupFlag;
-CRITICAL_SECTION cs;
-//	EnterCriticalSection(&cs);
-//	LeaveCriticalSection(&cs);
+CRITICAL_SECTION cs[GPIO_CNT];
 
 // ********** GPIO
 // GPIO書き込み
 void digitalWrite(int pin, int data)
 {
+	EnterCriticalSection(&cs[pin]);
 	gpio[pin] = data & 1;
+	LeaveCriticalSection(&cs[pin]);
 }
 
 // GPIO読み込み
@@ -228,7 +228,10 @@ int main()
 	terminate = false;
 	threadError = false;
 	setupFlag = false;
-	InitializeCriticalSection(&cs);
+	for(int i = 0; i < GPIO_CNT; ++ i)
+	{
+		InitializeCriticalSection(&cs[i]);
+	}
 	HANDLE thread = (HANDLE)_beginthreadex(NULL, 0, loop_thread, NULL, 0, NULL);
 	if(thread == NULL)
 	{
@@ -298,6 +301,9 @@ int main()
 	}
 	terminate = true;
 	WaitForSingleObject(thread, INFINITE);
-	DeleteCriticalSection(&cs);
+	for(int i = 0; i < GPIO_CNT; ++ i)
+	{
+		DeleteCriticalSection(&cs[i]);
+	}
 	printf("terminate ok\n");
 }
