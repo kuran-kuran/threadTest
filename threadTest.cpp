@@ -25,6 +25,7 @@
 unsigned char gpio[GPIO_CNT];
 bool terminate;
 bool threadError;
+bool setupFlag;
 CRITICAL_SECTION cs;
 //	EnterCriticalSection(&cs);
 //	LeaveCriticalSection(&cs);
@@ -137,6 +138,7 @@ void setup()
 	{
 		gpio[i] = 0;
 	}
+	setupFlag = true;
 }
 
 // Arduino loop
@@ -223,11 +225,16 @@ int main()
 	// thread
 	terminate = false;
 	threadError = false;
+	setupFlag = false;
 	InitializeCriticalSection(&cs);
 	HANDLE thread = (HANDLE)_beginthreadex(NULL, 0, loop_thread, NULL, 0, NULL);
 	if(thread == NULL)
 	{
 		printf("cannot begin thread.\n");
+	}
+	// setup wait
+	while(setupFlag == false)
+	{
 	}
 	// loop
 	int toggle = 0;
